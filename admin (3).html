@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Admin Panel</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="p-6 bg-gray-100">
+
+<h2 class="text-xl font-bold mb-4">Admin Panel</h2>
+
+<div id="data"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+const firebaseConfig = {
+apiKey: "AIzaSyAv6e14kxuK5PtbLNvP9HEvWDMHOVWjrWg",
+authDomain: "lost-found-system-732ba.firebaseapp.com",
+projectId: "lost-found-system-732ba"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const div = document.getElementById("data");
+
+onSnapshot(collection(db,"foundItems"),snap=>{
+div.innerHTML="";
+snap.forEach(d=>{
+const data=d.data();
+
+div.innerHTML+=`
+<div class="bg-white p-4 mb-2 shadow rounded">
+<p><b>${data.itemName}</b></p>
+<p>${data.location}</p>
+${data.name || ""}
+<p><b>📞 Phone:</b> ${data.phno}</p>
+</div>`;
+});
+});
+</script>
+
+</body>
+</html>

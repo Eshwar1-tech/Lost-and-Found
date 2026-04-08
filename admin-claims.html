@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Admin - Claims</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 p-6">
+
+<h2 class="text-2xl font-bold mb-6 text-center">
+🛠 Admin - Claim Requests
+</h2>
+
+<div id="container" class="grid gap-4"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { initializeFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAv6e14kxuK5PtbLNvP9HEvWDMHOVWjrWg",
+  authDomain: "lost-found-system-732ba.firebaseapp.com",
+  projectId: "lost-found-system-732ba"
+};
+
+const app = initializeApp(firebaseConfig);
+
+const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true
+});
+
+const container = document.getElementById("container");
+
+
+// 🔥 MATCH FUNCTION
+function calculateMatch(claim, found) {
+  let score = 0;
+
+  const item = claim.itemName?.toLowerCase();
+
+  // 🔹 ID CARD LOGIC
+  if (item.includes("id")) {
+
+    if (claim.name?.toLowerCase() === found.name?.toLowerCase()) score += 30;
+    if (claim.roll === found.roll) score += 30;
+    if (claim.dept?.toLowerCase() === found.dept?.toLowerCase()) score += 20;
+    if (claim.year === found.year) score += 10;
+    if (claim.location?.toLowerCase() === found.location?.toLowerCase()) score += 10;
+
+  } else {
+    // 🔹 NORMAL ITEMS
+
+    if (claim.itemName?.toLowerCase() === found.itemName?.toLowerCase()) score += 25;
+    if (claim.model?.toLowerCase() === found.model?.toLowerCase()) score += 20;
+    if (claim.location?.toLowerCase() === found.location?.toLowerCase()) score += 20;
+    if (claim.date === found.date) score += 15;
+  }
+
+  return score;
+}
+
+
+// 🔥 LOAD CLAIMS
+async function loadClaims() {
+
+  const claimSnap = await getDocs(collection(db, "claims"));
+  const foundSnap = await getDocs(collection(db, "foundItems"));
+
+  const foundItems = [];
+
+  foundSnap.forEach(doc => {
+    foundItems.push({ id: doc.id, ...doc.data() });
+  });
+
+  container.innerHTML = "";
+
+  if (claimSnap.empty) {
+    container.innerHTML = `<p class="text-center">No claims</p>`;
+    return;
+  }
+
+  claimSnap.forEach((d) => {
+    const data = d.data();
+
+    // 🔥 CALCULATE MATCH
+    let bestMatch = 0;
+
+    foundItems.forEach(item => {
+      const score = calculateMatch(data, item);
+      if (score > bestMatch) bestMatch = score;
+    });
+
+    const card = document.createElement("div");
+    card.className = "bg-white p-5 rounded-xl shadow";
+
+    card.innerHTML = `
+      <h3 class="font-bold text-lg">${data.itemName}</h3>
+
+      <p><b>👤 Name:</b> ${data.name}</p>
+      <p><b>🎓 Roll:</b> ${data.roll}</p>
+      <p><b>📍 Location:</b> ${data.location}</p>
+      <p><b>📅 Date:</b> ${data.date}</p>
+
+      <p><b>🤖 Match Score:</b> 
+        <span class="${
+          bestMatch >= 70 ? 'text-green-600' :
+          bestMatch >= 40 ? 'text-yellow-600' :
+          'text-red-600'
+        } font-bold">
+        ${bestMatch}%
+        </span>
+      </p>
+
+      <p class="mt-2"><b>Status:</b> 
+        <span class="text-yellow-600">${data.status}</span>
+      </p>
+
+      <div class="flex gap-2 mt-3">
+        <button class="approve bg-green-600 text-white px-3 py-1 rounded">
+          ✅ Approve
+        </button>
+
+        <button class="reject bg-red-600 text-white px-3 py-1 rounded">
+          ❌ Reject
+        </button>
+      </div>
+    `;
+
+    // ✅ Approve
+    card.querySelector(".approve").onclick = async () => {
+      await updateDoc(doc(db, "claims", d.id), {
+        status: "approved"
+      });
+      alert("Approved ✅");
+      loadClaims();
+    };
+
+    // ❌ Reject
+    card.querySelector(".reject").onclick = async () => {
+      await updateDoc(doc(db, "claims", d.id), {
+        status: "rejected"
+      });
+      alert("Rejected ❌");
+      loadClaims();
+    };
+
+    container.appendChild(card);
+  });
+}
+
+loadClaims();
+</script>
+
+</body>
+</html>
